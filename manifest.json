@@ -1,0 +1,62 @@
+{
+  "manifest_version": 3,
+  "name": "inPDF",
+  "version": "5.4.54",
+  "description": "Visor PDF con IA",
+  "icons": {
+    "16": "web/images/toolbarButton-viewThumbnail.svg",
+    "48": "web/images/toolbarButton-viewThumbnail.svg",
+    "128": "web/images/toolbarButton-viewThumbnail.svg"
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs"
+  ],
+  "host_permissions": [
+    "file://*/*",
+    "http://*/*",
+    "https://*/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content-script.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "web/*",
+        "build/*",
+        "lib/*",
+        "bypass-validation.js",
+        "extension-init.js",
+        "direct-loader.js",
+        "extension-post-load.js",
+        "modern-theme.css",
+        "webllm-loader.js",
+        "markdown-renderer.js"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "PDF"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
+  "icons": {
+    "128": "icon.png"
+  },
+  "author": "Basado en PDF.js de Mozilla Foundation",
+  "homepage_url": "https://mozilla.github.io/pdf.js/"
+  
+
+}

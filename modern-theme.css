@@ -1,0 +1,413 @@
+/* Cambios mínimos para PDF.js */
+
+/* Solo hacer la barra de tareas un poco más grande */
+#toolbarContainer {
+    height: 48px; /* Un poco más grande que el original */
+}
+
+#toolbar {
+    padding: 10px 16px; /* Padding ligeramente mayor */
+    height: 48px;
+    align-items: center;
+}
+
+/* Chat para el documento - Diseño limpio con toques Inled AI */
+#documentChat {
+    position: fixed;
+    right: 20px;
+    top: 80px; /* Debajo de la barra de herramientas */
+    width: 380px;
+    height: calc(100vh - 100px);
+    background: #ffffff;
+    border: 1px solid #e5e5e5;
+    border-top: 3px solid #19e619; /* Toque de color Inled AI */
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    font-family: system-ui, -apple-system, "Segoe UI", "Helvetica Neue", sans-serif;
+    font-size: 13px;
+    display: none;
+    flex-direction: column;
+    z-index: 200;
+    color: #2c2c2e;
+    animation: slideInFromRight 0.3s ease-out;
+}
+
+@keyframes slideInFromRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Icono de robot en la barra de herramientas integrado */
+#aiChatToggle {
+    min-width: 32px !important;
+    height: 32px !important;
+    padding: 4px !important;
+}
+
+#aiChatToggle i {
+    font-size: 16px;
+    color: rgba(240, 240, 240, 0.8); /* Blanco grisáceo */
+}
+
+#aiChatToggle:hover i {
+    color: rgba(255, 255, 255, 0.9); /* Blanco más claro en hover */
+}
+
+#aiChatToggle.active i {
+    color: #ffffff; /* Blanco puro cuando está activo */
+}
+
+.chat-header {
+    padding: 12px 16px;
+    background: #ffffff;
+    border-bottom: 1px solid #f0f0f0;
+    border-radius: 8px 8px 0 0;
+    font-weight: 600;
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #2c2c2e;
+}
+
+.chat-header::before {
+    content: '';
+    width: 20px;
+    height: 20px;
+    background: url('inledai.svg') no-repeat center;
+    background-size: contain;
+    margin-right: 8px;
+    flex-shrink: 0;
+}
+
+.chat-close {
+    background: #f8f8f8;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    color: #666;
+    padding: 6px;
+    border-radius: 6px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.chat-close:hover {
+    background: #e8e8e8;
+    color: #333;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: #ffffff;
+    overflow-x: hidden;
+}
+
+/* Scrollbar personalizado para look moderno */
+.chat-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+    transition: background 0.2s ease;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+.chat-message {
+    max-width: 80%;
+    padding: 12px 16px;
+    border-radius: 18px;
+    font-size: 13px;
+    line-height: 1.5;
+    word-wrap: break-word;
+    animation: messageSlideIn 0.3s ease-out;
+    position: relative;
+}
+
+@keyframes messageSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.chat-message.user {
+    background: #19e619;
+    color: white;
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+    margin-left: auto;
+}
+
+.chat-message.assistant {
+    background: #f8f9fa;
+    color: #1a1a1a;
+    border: 1px solid #e9ecef;
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+}
+
+/* Animación de puntos para cuando la IA está escribiendo */
+.typing-indicator {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 18px;
+    border-bottom-left-radius: 4px;
+    padding: 12px 16px;
+    align-self: flex-start;
+    max-width: 80px;
+}
+
+.typing-dots {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    justify-content: center;
+}
+
+.typing-dot {
+    width: 8px;
+    height: 8px;
+    background: #6c757d;
+    border-radius: 50%;
+    animation: typingBounce 1.4s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.typing-dot:nth-child(2) { animation-delay: -0.16s; }
+.typing-dot:nth-child(3) { animation-delay: 0s; }
+
+@keyframes typingBounce {
+    0%, 80%, 100% {
+        transform: scale(0.8);
+        opacity: 0.5;
+    }
+    40% {
+        transform: scale(1.0);
+        opacity: 1;
+    }
+}
+
+.chat-input-container {
+    padding: 12px 16px;
+    border-top: 1px solid #f0f0f0;
+    background: #ffffff;
+    border-radius: 0 0 8px 8px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+#chatInput {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid #e5e5e5;
+    border-radius: 20px;
+    outline: none;
+    font-size: 13px;
+    background: #ffffff;
+    color: #1a1a1a;
+    transition: all 0.2s ease;
+}
+
+#chatInput:focus {
+    border-color: #19e619;
+    box-shadow: 0 0 0 3px rgba(25, 230, 25, 0.1);
+}
+
+#chatInput::placeholder {
+    color: #adb5bd;
+}
+
+#chatSend {
+    background: #19e619;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+#chatSend:hover {
+    background: #00a417;
+}
+
+#chatSend:disabled {
+    background: #adb5bd;
+    cursor: not-allowed;
+}
+
+.chat-status {
+    padding: 6px 12px;
+    font-size: 11px;
+    color: #555; /* Texto gris oscuro para contraste */
+    background: var(--sidebar-bg-color, #f2f2f2);
+    border-top: 1px solid var(--separator-color, #d9d9d9);
+    text-align: center;
+}
+
+/* Barra de progreso para carga de WebLLM - Estilo PDF.js */
+.progress-container {
+    padding: 8px 12px;
+    background: var(--sidebar-bg-color, #f2f2f2);
+    border-top: 1px solid var(--separator-color, #d9d9d9);
+}
+
+.progress-bar {
+    width: 100%;
+    height: 4px;
+    background: var(--progressBar-bg-color, #d9d9d9);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--progressBar-color, #0a84ff);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    width: 0%;
+}
+
+.progress-text {
+    font-size: 10px;
+    color: #555; /* Texto gris oscuro para contraste */
+    text-align: center;
+    margin: 0;
+}
+
+.loading-spinner {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border: 2px solid var(--progressBar-bg-color, #d9d9d9);
+    border-radius: 50%;
+    border-top-color: var(--progressBar-color, #0a84ff);
+    animation: spin 1s ease-in-out infinite;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Botón flotante Inled AI para texto seleccionado */
+#textSelectionButton {
+    position: absolute;
+    background: #19e619;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    z-index: 10002;
+    display: none;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+    font-family: system-ui, -apple-system, sans-serif;
+}
+
+#textSelectionButton:hover {
+    background: #00a417;
+    transform: translateY(-1px);
+}
+
+#textSelectionButton:active {
+    transform: translateY(0);
+}
+
+#textSelectionButton::before {
+    content: '';
+    width: 16px;
+    height: 16px;
+    background: url('inledai.svg') no-repeat center;
+    background-size: contain;
+    margin-right: 8px;
+    display: inline-block;
+}
+
+/* Animación de aparición pegajosa */
+@keyframes stickyBounceIn {
+    0% {
+        opacity: 0;
+        transform: translateY(20px) scale(0.8);
+    }
+    50% {
+        opacity: 0.8;
+        transform: translateY(-5px) scale(1.1);
+    }
+    70% {
+        transform: translateY(2px) scale(0.95);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+#textSelectionButton.show {
+    animation: stickyBounceIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Efecto pegajoso adicional con pseudo-elemento */
+#textSelectionButton::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60%;
+    height: 4px;
+    background: rgba(25, 230, 25, 0.3);
+    border-radius: 50%;
+    filter: blur(2px);
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+#textSelectionButton:hover::after {
+    opacity: 1;
+    width: 80%;
+    height: 6px;
+    background: rgba(25, 230, 25, 0.4);
+}
