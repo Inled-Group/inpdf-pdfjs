@@ -731,53 +731,153 @@
             return context;
         }
 
-        // Crear resumen inteligente para documentos largos
+        // Crear resumen inteligente y contextual para documentos largos
         async function createIntelligentSummary(totalPages) {
-            chatStatus.textContent = 'Analizando documento extenso...';
+            chatStatus.textContent = 'Creando resumen inteligente...';
             
-            // Seleccionar solo páginas clave estratégicamente
-            const keyPages = [1, totalPages]; // Solo primera y última página
-            if (totalPages > 5) {
-                keyPages.push(Math.floor(totalPages / 2)); // Página central
+            try {
+                if (window.PDFViewerApplication && window.PDFViewerApplication.pdfDocument) {
+                    const pdf = window.PDFViewerApplication.pdfDocument;
+                    
+                    // Estrategia de muestreo inteligente basada en tamaño del documento
+                    let keyPages = [];
+                    
+                    if (totalPages <= 15) {
+                        // Documento mediano: primera, páginas centrales y última
+                        keyPages = [1, Math.floor(totalPages / 3), Math.floor(2 * totalPages / 3), totalPages];
+                    } else if (totalPages <= 50) {
+                        // Documento grande: distribución más amplia
+                        keyPages = [1, 2, Math.floor(totalPages * 0.2), Math.floor(totalPages * 0.5), 
+                                  Math.floor(totalPages * 0.8), totalPages];
+                    } else {
+                        // Documento muy grande: muestreo estratégico
+                        keyPages = [1, 2, 3, Math.floor(totalPages * 0.1), Math.floor(totalPages * 0.3),
+                                  Math.floor(totalPages * 0.5), Math.floor(totalPages * 0.7), 
+                                  Math.floor(totalPages * 0.9), totalPages];
+                    }
+                    
+                    // Remover duplicados y páginas inválidas
+                    keyPages = [...new Set(keyPages)].filter(p => p >= 1 && p <= totalPages);
+                    
+                    let documentStructure = {
+                        title: '',
+                        headers: [],
+                        keyTopics: [],
+                        summary: ''
+                    };
+                    
+                    console.log(`[PDF.js Extension] Analizando páginas clave: ${keyPages.join(', ')}`);
+                    
+                    for (const pageNum of keyPages) {
+                        try {
+                            const page = await pdf.getPage(pageNum);
+                            const textContent = await page.getTextContent();
+                            const pageText = textContent.items.map(item => item.str).join(' ');
+                            
+                            if (pageText.trim()) {
+                                // Analizar estructura del documento
+                                await analyzePageStructure(pageText, pageNum, documentStructure);
+                            }
+                            
+                            chatStatus.textContent = `Analizando página ${pageNum}...`;
+                            
+                            // Agregar pequeña pausa para evitar saturación
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                            
+                        } catch (error) {
+                            console.log('[PDF.js Extension] Error analizando página', pageNum, ':', error);
+                        }
+                    }
+                    
+                    // Construir resumen inteligente
+                    let summary = `\n\n📊 **RESUMEN INTELIGENTE DEL DOCUMENTO:**\n`;
+                    summary += `📄 **Páginas:** ${totalPages}\n`;
+                    
+                    if (documentStructure.title) {
+                        summary += `📋 **Título:** ${documentStructure.title}\n`;
+                    }
+                    
+                    if (documentStructure.headers.length > 0) {
+                        summary += `🗂️ **Secciones principales:**\n`;
+                        documentStructure.headers.slice(0, 5).forEach(header => {
+                            summary += `   • ${header}\n`;
+                        });
+                    }
+                    
+                    if (documentStructure.keyTopics.length > 0) {
+                        summary += `🔍 **Temas clave:** ${documentStructure.keyTopics.slice(0, 8).join(', ')}\n`;
+                    }
+                    
+                    summary += `\n💡 **Tip:** Usa "página X" para análisis específico de cualquier página\n`;
+                    
+                    // Guardar estructura para búsquedas futuras
+                    window.documentStructure = documentStructure;
+                    window.pdfFullDocument = { pdf, totalPages };
+                    
+                    return summary;
+                }
+            } catch (error) {
+                console.log('[PDF.js Extension] Error creando resumen:', error);
             }
             
-            // Extraer solo información muy condensada
-            if (window.PDFViewerApplication && window.PDFViewerApplication.pdfDocument) {
-                const pdf = window.PDFViewerApplication.pdfDocument;
-                let summary = `\nDocumento: ${totalPages} páginas. `;
-                
-                for (const pageNum of keyPages) {
-                    try {
-                        const page = await pdf.getPage(pageNum);
-                        const textContent = await page.getTextContent();
-                        const pageText = textContent.items.map(item => item.str).join(' ');
-                        
-                        if (pageText.trim()) {
-                            // Solo la primera línea significativa
-                            const firstSentence = pageText.split(/[.\n!?]+/).find(sentence => 
-                                sentence.trim().length > 15 && sentence.trim().length < 100
-                            );
-                            
-                            if (firstSentence) {
-                                summary += `P${pageNum}: ${firstSentence.trim()}. `;
-                            }
-                        }
-                        
-                        chatStatus.textContent = `Analizando página ${pageNum}...`;
-                    } catch (pageError) {
-                        console.log(`[PDF.js Extension] Error analizando página ${pageNum}:`, pageError);
+            return `\n📄 **Documento extenso:** ${totalPages} páginas\n💡 Usa "página X" para análisis específico`;
+        }
+        
+        // Función para analizar la estructura de una página
+        async function analyzePageStructure(pageText, pageNum, structure) {
+            const text = pageText.trim();
+            if (!text) return;
+            
+            // Detectar título (primera página, texto en mayúsculas o con formato especial)
+            if (pageNum === 1 && !structure.title) {
+                const lines = text.split('\n').filter(line => line.trim());
+                if (lines.length > 0) {
+                    const firstLine = lines[0].trim();
+                    if (firstLine.length < 100 && firstLine.length > 5) {
+                        structure.title = firstLine;
                     }
                 }
-                
-                summary += `(Usa "página X" para detalles específicos)`;
-                
-                // Guardar referencia para consultas específicas
-                window.pdfFullDocument = { pdf, totalPages };
-                
-                return summary;
             }
             
-            return `\nDocumento extenso: ${totalPages} páginas. (Usa "página X" para análisis específico)`;
+            // Detectar headers/secciones (líneas cortas, posiblemente en mayúsculas)
+            const lines = text.split('\n');
+            lines.forEach(line => {
+                const trimmedLine = line.trim();
+                if (trimmedLine.length > 5 && trimmedLine.length < 80) {
+                    // Posible header si tiene formato especial
+                    if (trimmedLine.toUpperCase() === trimmedLine || 
+                        trimmedLine.match(/^\d+[\.\)]\s/) ||
+                        trimmedLine.match(/^[A-Z][A-Z\s]{10,}$/)) {
+                        if (!structure.headers.includes(trimmedLine)) {
+                            structure.headers.push(trimmedLine);
+                        }
+                    }
+                }
+            });
+            
+            // Extraer temas clave (palabras frecuentes, sustantivos importantes)
+            const words = text.toLowerCase()
+                .replace(/[^\w\sáéíóúüñ]/g, ' ')
+                .split(/\s+/)
+                .filter(word => word.length > 4)
+                .filter(word => !['para', 'esta', 'este', 'desde', 'hasta', 'sobre', 'entre', 'todos', 'todas', 'pueden', 'deben', 'tienen', 'hacer', 'puede', 'debe', 'tiene'].includes(word));
+            
+            // Contar frecuencia de palabras
+            const wordFreq = {};
+            words.forEach(word => {
+                wordFreq[word] = (wordFreq[word] || 0) + 1;
+            });
+            
+            // Añadir palabras significativas
+            Object.entries(wordFreq)
+                .filter(([word, freq]) => freq >= 2)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .forEach(([word]) => {
+                    if (!structure.keyTopics.includes(word)) {
+                        structure.keyTopics.push(word);
+                    }
+                });
         }
         
         // Función para extraer texto del PDF actual
@@ -1033,13 +1133,25 @@ INSTRUCCIONES IMPORTANTES:
         // Crear prompt inteligente basado en el contenido del documento
         async function createIntelligentPrompt(userMessage, pdfContext) {
             // Detectar si el usuario solicita una página específica
-            const pageMatch = userMessage.match(/página\s+(\d+)|page\s+(\d+)/i);
+            const pageMatch = userMessage.match(/página\s+(\d+)|page\s+(\d+)|p\.\s*(\d+)|p(\d+)/i);
             if (pageMatch && window.pdfFullDocument) {
-                const requestedPage = parseInt(pageMatch[1] || pageMatch[2]);
+                const requestedPage = parseInt(pageMatch[1] || pageMatch[2] || pageMatch[3] || pageMatch[4]);
                 const specificPageContent = await getSpecificPageContent(requestedPage);
                 if (specificPageContent) {
-                    return `📄 **ANÁLISIS DE PÁGINA ESPECÍFICA**\n\n**Página solicitada:** ${requestedPage}\n\n**Contenido de la página:**\n${specificPageContent}\n\n**Consulta del usuario:** ${userMessage}\n\n**INSTRUCCIONES:**\n- Analiza específicamente el contenido de la página ${requestedPage}\n- Responde basándote únicamente en la información de esta página\n- Usa formato Markdown con estructura clara\n- Incluye emojis relevantes para mejor legibilidad\n\n**RESPUESTA:**`;
+                    return `📄 **ANÁLISIS DE PÁGINA ESPECÍFICA**\n\n**Página solicitada:** ${requestedPage}\n\n**Contenido de la página:**\n${specificPageContent}\n\n**Consulta del usuario:** ${userMessage}\n\n**INSTRUCCIONES:**\n- Analiza específicamente el contenido de la página ${requestedPage}\n- Responde basándote únicamente en la información de esta página\n- Si la pregunta es sobre algo específico de esta página, cita la información relevante\n- Usa formato Markdown con estructura clara\n- Incluye emojis relevantes para mejor legibilidad\n- Si necesitas información de otras páginas, sugiérelo al usuario\n\n**RESPUESTA:**`;
                 }
+            }
+            
+            // Detectar consultas que requieren búsqueda específica de términos
+            const searchTermsMatch = userMessage.match(/buscar?|encontrar|dónde.*dice|dónde.*menciona|en qué página/i);
+            if (searchTermsMatch && window.documentStructure) {
+                return createSearchBasedPrompt(userMessage, pdfContext);
+            }
+            
+            // Detectar solicitudes de resumen con enfoque específico
+            const summaryMatch = userMessage.match(/resume|resumen|sintetiza|principales.*puntos|qué.*trata/i);
+            if (summaryMatch && window.documentStructure) {
+                return createSummaryBasedPrompt(userMessage, pdfContext);
             }
             
             const hasContent = pdfContext.includes('Contenido del documento:') || pdfContext.includes('DOCUMENTO EXTENSO');
@@ -1067,6 +1179,77 @@ INSTRUCCIONES IMPORTANTES:
 - Mantén respuestas útiles y prácticas\n\n`;
             }
             
+            prompt += `**RESPUESTA:**`;
+            
+            return prompt;
+        }
+        
+        // Crear prompt para búsquedas específicas
+        function createSearchBasedPrompt(userMessage, pdfContext) {
+            let prompt = `🔍 **BÚSQUEDA ESPECÍFICA EN DOCUMENTO**\n\n`;
+            prompt += `**Consulta de búsqueda:** ${userMessage}\n\n`;
+            
+            if (window.documentStructure) {
+                prompt += `**Información del documento:**\n${pdfContext}\n\n`;
+                
+                if (window.documentStructure.keyTopics.length > 0) {
+                    prompt += `**Temas disponibles en el documento:** ${window.documentStructure.keyTopics.join(', ')}\n\n`;
+                }
+                
+                if (window.documentStructure.headers.length > 0) {
+                    prompt += `**Secciones del documento:**\n`;
+                    window.documentStructure.headers.slice(0, 8).forEach(header => {
+                        prompt += `   • ${header}\n`;
+                    });
+                    prompt += `\n`;
+                }
+            }
+            
+            prompt += `**INSTRUCCIONES:**\n`;
+            prompt += `- Analiza la consulta de búsqueda del usuario\n`;
+            prompt += `- Usa la información disponible del documento para ayudar\n`;
+            prompt += `- Si encuentras términos relacionados, mencionarlos\n`;
+            prompt += `- Si necesitas información más específica, sugiere al usuario que pregunte por "página X"\n`;
+            prompt += `- Usa el resumen del documento para guiar la respuesta\n`;
+            prompt += `- Incluye sugerencias de búsqueda alternativas si es relevante\n`;
+            prompt += `- Formato Markdown con emojis para mejor legibilidad\n\n`;
+            prompt += `**RESPUESTA:**`;
+            
+            return prompt;
+        }
+        
+        // Crear prompt para resúmenes especializados
+        function createSummaryBasedPrompt(userMessage, pdfContext) {
+            let prompt = `📋 **RESUMEN ESPECIALIZADO DEL DOCUMENTO**\n\n`;
+            prompt += `**Solicitud específica:** ${userMessage}\n\n`;
+            prompt += `**Información del documento:**\n${pdfContext}\n\n`;
+            
+            if (window.documentStructure) {
+                if (window.documentStructure.title) {
+                    prompt += `**Título:** ${window.documentStructure.title}\n\n`;
+                }
+                
+                if (window.documentStructure.headers.length > 0) {
+                    prompt += `**Estructura del documento:**\n`;
+                    window.documentStructure.headers.forEach(header => {
+                        prompt += `   • ${header}\n`;
+                    });
+                    prompt += `\n`;
+                }
+                
+                if (window.documentStructure.keyTopics.length > 0) {
+                    prompt += `**Temas principales:** ${window.documentStructure.keyTopics.join(', ')}\n\n`;
+                }
+            }
+            
+            prompt += `**INSTRUCCIONES:**\n`;
+            prompt += `- Crea un resumen estructurado del documento\n`;
+            prompt += `- Enfócate en los aspectos que el usuario está preguntando\n`;
+            prompt += `- Usa la información de estructura y temas clave disponible\n`;
+            prompt += `- Organiza el resumen en secciones claras\n`;
+            prompt += `- Si el usuario pide detalles específicos, sugiere páginas relevantes\n`;
+            prompt += `- Usa formato Markdown con emojis para mejor organización\n`;
+            prompt += `- Incluye puntos clave y conclusiones principales\n\n`;
             prompt += `**RESPUESTA:**`;
             
             return prompt;
